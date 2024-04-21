@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"go-http-server/lib/utils/http"
+	"regexp"
+	"strings"
 )
 
 func handleConnection(conn net.Conn) {
@@ -18,11 +20,59 @@ func handleConnection(conn net.Conn) {
 	connectionData := string(readBuffer[:n])
 	fmt.Printf("\nReading from TCP connection:\n%v\n", connectionData)
 
-	
-	if http.GetRequestPath(connectionData) == "/" {
-		conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	pattern := "/echo/.+"
+
+	echoRegExp, err := regexp.Compile(pattern)
+	if err != nil {
+		fmt.Println("Error compiling regex pattern:", err)
+		return
+	}
+
+	requestpath := http.GetRequestPath(connectionData)
+
+	if requestpath == "/" {
+		body := "server responded to /"
+		response := http.BuildResponse(
+			200, 
+			"OK", 
+			body, 
+			"Content-Type: text/plain", 
+			fmt.Sprintf("Content-Length: %v", len(body)),
+		)
+
+		conn.Write(response)
+	} else if echoRegExp.MatchString(requestpath){
+		var body string
+
+		for index, str := range strings.Split(requestpath, "/") {
+			if index < 2 {
+				continue
+			} else if index == 2 {
+				body += str
+			} else {
+				body += "/" + str
+			}
+		}
+		response := http.BuildResponse(
+			200, 
+			"OK", 
+			body, 
+			"Content-Type: text/plain", 
+			fmt.Sprintf("Content-Length: %v", len(body)),
+		)
+
+		conn.Write(response)
 	} else {
-		conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+		body := "Route not found"
+		response := http.BuildResponse(
+			404, 
+			"Not Found", 
+			body, 
+			"Content-Type: text/plain", 
+			fmt.Sprintf("Content-Length: %v", len(body)),
+		)
+
+		conn.Write(response)
 	}
 
 	defer conn.Close()
