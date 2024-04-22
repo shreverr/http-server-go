@@ -44,6 +44,36 @@ func handleConnection(conn net.Conn, directory string) {
 		)
 
 		conn.Write(response)
+	} else if strings.Contains(connectionData, "POST /files") {
+		fileName :=  strings.Split(requestpath, "/")[2]
+
+		fullPath := filepath.Join(directory, fileName)
+
+		reqBody := strings.Split(connectionData, "\r\n\r\n")[1]
+
+		file, err := os.Create(fullPath)  //create a new file
+		if err != nil {
+				fmt.Println(err)
+				return
+		}
+    
+		defer file.Close()
+
+		writeErr := os.WriteFile(fullPath, []byte(reqBody), 0666)
+		if writeErr != nil {
+			fmt.Println(writeErr)
+		}
+
+		body := reqBody 
+		response := http.BuildResponse(
+			201,
+			"OK", 
+			body, 
+			"Content-Type: application/octet-stream", 
+			fmt.Sprintf("Content-Length: %v", len(body)),
+		)
+
+		conn.Write(response)
 	} else if strings.Contains(requestpath, "/files") {
 		fileName :=  strings.Split(requestpath, "/")[2]
 
