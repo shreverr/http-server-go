@@ -41,6 +41,22 @@ func handleConnection(conn net.Conn) {
 		)
 
 		conn.Write(response)
+	} else if requestpath == "/user-agent" {
+		var body string
+		for _, str := range strings.Split(connectionData, "\r\n") {
+			if strings.Contains(str, "User-Agent:") {
+				body = strings.Split(str, " ")[1]
+			}
+		}
+		response := http.BuildResponse(
+			200,
+			"OK", 
+			body, 
+			"Content-Type: text/plain", 
+			fmt.Sprintf("Content-Length: %v", len(body)),
+		)
+
+		conn.Write(response)
 	} else if echoRegExp.MatchString(requestpath){
 		var body string
 
