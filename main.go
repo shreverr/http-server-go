@@ -6,9 +6,12 @@ import (
 	"go-http-server/lib/utils/http"
 	"regexp"
 	"strings"
+	"flag"
+	"os"
+	"path/filepath"
 )
 
-func handleConnection(conn net.Conn) {
+func handleConnection(conn net.Conn, directory string) {
 	readBuffer := make([]byte, 1024)
 	n, err := conn.Read(readBuffer)
 
@@ -37,6 +40,40 @@ func handleConnection(conn net.Conn) {
 			"OK", 
 			body, 
 			"Content-Type: text/plain", 
+			fmt.Sprintf("Content-Length: %v", len(body)),
+		)
+
+		conn.Write(response)
+	} else if strings.Contains(requestpath, "/files") {
+		fileName :=  strings.Split(requestpath, "/")[2]
+
+		fullPath := filepath.Join(directory, fileName)
+
+		_, err := os.Stat(fullPath)
+		if err != nil {
+			fmt.Println("Specified file does not exist")
+			body := "Specified file does not exist" 
+			response := http.BuildResponse(
+				404,
+				"Not Found", 
+				body, 
+				"Content-Type: text/plain", 
+				fmt.Sprintf("Content-Length: %v", len(body)),
+			)
+		conn.Write(response)
+		return
+		}
+
+		data, err := os.ReadFile(fullPath)
+		fileData := string(data)
+		fmt.Printf("file data: %v\n", fileData)
+
+		body := fileData 
+		response := http.BuildResponse(
+			200,
+			"OK", 
+			body, 
+			"Content-Type: application/octet-stream", 
 			fmt.Sprintf("Content-Length: %v", len(body)),
 		)
 
@@ -101,6 +138,10 @@ func main () {
 	if err != nil {
 		fmt.Printf("Error binding to a port: %v\n", err)
 	}
+	var directory string
+
+	flag.StringVar(&directory, "directory", "", "Specify the directory")
+	flag.Parse()
 
 	defer ln.Close()
 
@@ -112,6 +153,6 @@ func main () {
 		
 		fmt.Printf("New TCP connection accepted")
 
-		go handleConnection(conn)
+		go handleConnection(conn, directory)
 	}
 }
