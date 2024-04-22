@@ -112,6 +112,6 @@ func main () {
 		
 		fmt.Printf("New TCP connection accepted")
 
-		handleConnection(conn)
+		go handleConnection(conn)
 	}
 }
